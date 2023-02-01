@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 func main() {
@@ -16,6 +17,12 @@ func main() {
 	err := searcher.Load("completeworks.txt")
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	fmt.Println("Loaded complete works")
+	titleErr := searcher.LoadWorkTitleIndexes()
+	if titleErr != nil {
+		log.Fatal(titleErr)
 	}
 
 	fs := http.FileServer(http.Dir("./static"))
@@ -36,8 +43,9 @@ func main() {
 }
 
 type Searcher struct {
-	CompleteWorks string
-	SuffixArray   *suffixarray.Index
+	CompleteWorks    string
+	SuffixArray      *suffixarray.Index
+	WorkTitleIndexes []WorkTitleResult
 }
 
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
@@ -72,11 +80,112 @@ func (s *Searcher) Load(filename string) error {
 	return nil
 }
 
-func (s *Searcher) Search(query string) []string {
-	idxs := s.SuffixArray.Lookup([]byte(query), -1)
-	results := []string{}
-	for _, idx := range idxs {
-		results = append(results, s.CompleteWorks[idx-250:idx+250])
+type WorkTitleResult struct {
+	WorkTitle      string
+	WorkTitleIndex int
+}
+
+func (s *Searcher) LoadWorkTitleIndexes() error {
+
+	// Since this is from the table of contents, we can safely assume that the titles indexs will be in descending sorted order
+	workTitles := []string{
+		"THE SONNETS",
+		"ALL’S WELL THAT ENDS WELL",
+		"THE TRAGEDY OF ANTONY AND CLEOPATRA",
+		"AS YOU LIKE IT",
+		"THE COMEDY OF ERRORS",
+		"THE TRAGEDY OF CORIOLANUS",
+		"CYMBELINE",
+		"THE TRAGEDY OF HAMLET, PRINCE OF DENMARK",
+		"THE FIRST PART OF KING HENRY THE FOURTH",
+		"THE SECOND PART OF KING HENRY THE FOURTH",
+		"THE LIFE OF KING HENRY THE FIFTH",
+		"THE FIRST PART OF HENRY THE SIXTH",
+		"THE SECOND PART OF KING HENRY THE SIXTH",
+		"THE THIRD PART OF KING HENRY THE SIXTH",
+		"KING HENRY THE EIGHTH",
+		"KING JOHN",
+		"THE TRAGEDY OF JULIUS CAESAR",
+		"THE TRAGEDY OF KING LEAR",
+		"LOVE’S LABOUR’S LOST",
+		"THE TRAGEDY OF MACBETH",
+		"MEASURE FOR MEASURE",
+		"THE MERCHANT OF VENICE",
+		"THE MERRY WIVES OF WINDSOR",
+		"A MIDSUMMER NIGHT’S DREAM",
+		"MUCH ADO ABOUT NOTHING",
+		"THE TRAGEDY OF OTHELLO, MOOR OF VENICE",
+		"PERICLES, PRINCE OF TYRE",
+		"KING RICHARD THE SECOND",
+		"KING RICHARD THE THIRD",
+		"THE TRAGEDY OF ROMEO AND JULIET",
+		"THE TAMING OF THE SHREW",
+		"THE TEMPEST",
+		"THE LIFE OF TIMON OF ATHENS",
+		"THE TRAGEDY OF TITUS ANDRONICUS",
+		"THE HISTORY OF TROILUS AND CRESSIDA",
+		"TWELFTH NIGHT; OR, WHAT YOU WILL",
+		"THE TWO GENTLEMEN OF VERONA",
+		"THE TWO NOBLE KINSMEN",
+		"THE WINTER’S TALE",
+		"A LOVER’S COMPLAINT",
+		"THE PASSIONATE PILGRIM",
+		"THE PHOENIX AND THE TURTLE",
+		"THE RAPE OF LUCRECE",
+		"VENUS AND ADONIS",
 	}
-	return results
+
+	workTitleResult := WorkTitleResult{}
+	workTitleResultList := []WorkTitleResult{}
+
+	for _, title := range workTitles {
+		patternString := title
+		// TODO: a smarter regex here would improve accuracy, but I got stuck with new line matching
+		pattern := regexp.MustCompile(patternString)
+		idxs := s.SuffixArray.FindAllIndex(pattern, -1)
+		if len(idxs) > 1 {
+			workTitleResult.WorkTitle = title
+			workTitleResult.WorkTitleIndex = idxs[1][0]
+			workTitleResultList = append(workTitleResultList, workTitleResult)
+		} else {
+			workTitleResult.WorkTitle = title
+			workTitleResult.WorkTitleIndex = idxs[0][0]
+			workTitleResultList = append(workTitleResultList, workTitleResult)
+		}
+	}
+
+	s.WorkTitleIndexes = workTitleResultList
+	return nil
+}
+
+type SearchResult struct {
+	Result        string
+	LocationTitle string
+}
+
+func (s *Searcher) Search(query string) []SearchResult {
+	idxs := s.SuffixArray.Lookup([]byte(query), -1)
+	result := SearchResult{}
+	resultList := []SearchResult{}
+
+	for _, idx := range idxs {
+		fmt.Printf("Target idx: %d\n", idx)
+		leftIdx := 0
+		rightIdx := 1
+
+		// Assumes work title indexes sorted in ascending order
+		for rightIdx < len(s.WorkTitleIndexes) {
+			if (idx > s.WorkTitleIndexes[leftIdx].WorkTitleIndex) && (idx < s.WorkTitleIndexes[rightIdx].WorkTitleIndex) {
+				result.LocationTitle = s.WorkTitleIndexes[leftIdx].WorkTitle
+				break
+			} else {
+				leftIdx++
+				rightIdx++
+			}
+		}
+
+		result.Result = s.CompleteWorks[idx-250 : idx+250]
+		resultList = append(resultList, result)
+	}
+	return resultList
 }
