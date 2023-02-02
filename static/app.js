@@ -3,14 +3,20 @@ const Controller = {
     ev.preventDefault();
     const form = document.getElementById("form");
     const data = Object.fromEntries(new FormData(form));
-    const response = fetch(`/search?q=${data.query}`).then((response) => {
+    const matchCaseToggle = !!data['match-case'];
+    const wholeWordToggle = !!data['whole-word'];
+
+    const requestPath = `/search?q=${data.query}&match-case=${matchCaseToggle}&whole-word=${wholeWordToggle}`
+    console.log('requestPath', requestPath);
+
+    const response = fetch(requestPath).then((response) => {
       response.json().then((results) => {
-        Controller.updateTable(results, data.query);
+        Controller.updateTable(results, data.query, matchCaseToggle, wholeWordToggle);
       });
     });
   },
 
-  updateTable: (results, query) => {
+  updateTable: (results, query, matchCaseToggle, wholeWordToggle) => {
     const table = document.getElementById("table-body");
     const resultCount = document.getElementById("result-count");
     resultCount.innerText = `Results: ${results.length}`;
@@ -21,8 +27,8 @@ const Controller = {
       rows.push(`
         <div>
           <strong># ${i++}</strong><br />
-          ${result.LocationTitle}<br />
-          ${markedResult}<br />
+          <blockquote>${markedResult}</blockquote><br />
+          <i>${result.LocationTitle}</i><br />
         <div>
       `);
       rows.push(`<hr />`);
@@ -30,9 +36,10 @@ const Controller = {
     table.innerHTML = rows.join(" ");
   },
 
-  insertMarks: (text, query) => {
+  insertMarks: (text, query, matchCaseToggle, wholeWordToggle) => {
+    // fix the highlights based on toggles
     const pattern = new RegExp(query, "gi");
-    const markedResult = text.replace(pattern, `<mark>${query}</mark>`);
+    const markedResult = text.replace(pattern, '<mark>$&</mark>');
     return markedResult
   },
 };

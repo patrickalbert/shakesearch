@@ -29,10 +29,13 @@ We will be primarily evaluating based on how well the search works for users. A 
 2. Render (render.com) hosting, the application deploys cleanly from a public url.
 3. In your submission, share with us what changes you made and how you would prioritize changes if you had more time.
 
+If I had more time, I would 
 ## Improvements
-- highlight matches
-- number matches
-- display the work where the match was found
-- case insensitive
-- multiple words
-- misspellings?
+[x] highlight matches
+[x] number matches
+[x] display the work where the match was found
+[x] case insensitive
+[x] optons for the user to choose, case sensitive, whole word, regex.
+[x] multiple words?
+[] select a work to search within
+[] misspellings?

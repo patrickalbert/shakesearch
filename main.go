@@ -19,7 +19,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Loaded complete works")
 	titleErr := searcher.LoadWorkTitleIndexes()
 	if titleErr != nil {
 		log.Fatal(titleErr)
@@ -48,15 +47,31 @@ type Searcher struct {
 	WorkTitleIndexes []WorkTitleResult
 }
 
+type SearchQuery struct {
+	QueryString string
+	MatchCase   bool
+	WholeWord   bool
+}
+
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query, ok := r.URL.Query()["q"]
+		matchCase := r.URL.Query()["match-case"]
+		wholeWord := r.URL.Query()["whole-word"]
+
 		if !ok || len(query[0]) < 1 {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("missing search query in URL params"))
 			return
 		}
-		results := searcher.Search(query[0])
+
+		activeQuery := SearchQuery{
+			QueryString: query[0],
+			MatchCase:   matchCase[0] == "true",
+			WholeWord:   wholeWord[0] == "true",
+		}
+
+		results := searcher.Search(activeQuery)
 		buf := &bytes.Buffer{}
 		enc := json.NewEncoder(buf)
 		err := enc.Encode(results)
@@ -163,13 +178,17 @@ type SearchResult struct {
 	LocationTitle string
 }
 
-func (s *Searcher) Search(query string) []SearchResult {
-	idxs := s.SuffixArray.Lookup([]byte(query), -1)
+func (s *Searcher) Search(query SearchQuery) []SearchResult {
+	pattern := regexp.MustCompile(genRegexPattern(query))
+	slices := s.SuffixArray.FindAllIndex(pattern, -1)
+	idxs := []int{}
+	for _, slice := range slices {
+		idxs = append(idxs, slice[0])
+	}
 	result := SearchResult{}
 	resultList := []SearchResult{}
 
 	for _, idx := range idxs {
-		fmt.Printf("Target idx: %d\n", idx)
 		leftIdx := 0
 		rightIdx := 1
 
@@ -188,4 +207,18 @@ func (s *Searcher) Search(query string) []SearchResult {
 		resultList = append(resultList, result)
 	}
 	return resultList
+}
+
+func genRegexPattern(query SearchQuery) string {
+	pattern := query.QueryString
+
+	if query.WholeWord {
+		pattern = "\\b" + query.QueryString + "\\b"
+	}
+
+	if !query.MatchCase {
+		pattern = "(?i)" + pattern
+	}
+
+	return pattern
 }
