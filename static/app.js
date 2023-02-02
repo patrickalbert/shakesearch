@@ -5,7 +5,7 @@ const Controller = {
     const data = Object.fromEntries(new FormData(form));
     const response = fetch(`/search?q=${data.query}`).then((response) => {
       response.json().then((results) => {
-        Controller.updateTable(results, query);
+        Controller.updateTable(results, data.query);
       });
     });
   },
@@ -17,19 +17,24 @@ const Controller = {
     const rows = [];
     let i = 1;
     for (let result of results) {
-      console.log('result', result);
-      rows.push(`<tr>${i++}<tr/>`);
-      rows.push(`<tr>${result.LocationTitle}<tr/>`);
-      rows.push(`<tr>${result.Result}<tr/>`);
+      const markedResult = Controller.insertMarks(result.Result, query);
+      rows.push(`
+        <div>
+          <strong># ${i++}</strong><br />
+          ${result.LocationTitle}<br />
+          ${markedResult}<br />
+        <div>
+      `);
       rows.push(`<hr />`);
     }
-    table.innerHTML = rows;
+    table.innerHTML = rows.join(" ");
   },
 
-  // insertMarks: (string, query) => {
-  //   const regex = new RegExp(query, "gi");
-  //   return string.replace(regex, (query) => `<mark>${query}</mark>`);
-  // },
+  insertMarks: (text, query) => {
+    const pattern = new RegExp(query, "gi");
+    const markedResult = text.replace(pattern, `<mark>${query}</mark>`);
+    return markedResult
+  },
 };
 
 const form = document.getElementById("form");
