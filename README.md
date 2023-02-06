@@ -31,6 +31,8 @@ We will be primarily evaluating based on how well the search works for users. A 
 
 ## Improvements
 
+**Simple react frontent** - keeping things as simple as possible, but leveraging react deal with frontend interactions
+
 **Highlight matches** - make the matching query more visible in the results
 
 **Number matches** - show the user the total number of results the query generated. Number each result to allow for easier differentitation
