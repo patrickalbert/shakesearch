@@ -25,9 +25,6 @@ func main() {
 		log.Fatal(titleErr)
 	}
 
-	fs := http.FileServer(http.Dir("./static"))
-	http.Handle("/", fs)
-
 	http.HandleFunc("/search", handleSearch(searcher))
 
 	http.HandleFunc("/reader", handleReader(searcher))

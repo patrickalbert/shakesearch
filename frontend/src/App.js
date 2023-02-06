@@ -12,18 +12,20 @@ function App() {
   const [queryResults, setQueryResults] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [readingPanelContent, setReadingPanelContent] = useState('');
+
+  const apiBase = process.env.REACT_APP_API;
   
   
   useEffect(() => {
     if (queryResults.length > 0 && currentIndex > 0) {
-      const requestPath = `http://localhost:3001/reader?idx=${currentIndex}`
+      const requestPath = `${apiBase}/reader?idx=${currentIndex}`
       const response = fetch(requestPath).then((response) => {
         response.json().then((result) => {
           setReadingPanelContent(result.PageText)
         });
       });
     }
-  }, [currentIndex, readingPanelContent, queryResults])
+  }, [currentIndex, readingPanelContent, queryResults, apiBase])
 
   const handleSubmit = (values) => {
     const queryValue = values.query;
@@ -32,7 +34,7 @@ function App() {
     setQuery(queryValue);
     setMatchCaseToggle(matchCaseValue);
 
-    const requestPath = `http://localhost:3001/search?q=${queryValue}&match-case=${matchCaseValue}&whole-word=${wholeWordValue}`
+    const requestPath = `${apiBase}/search?q=${queryValue}&match-case=${matchCaseValue}&whole-word=${wholeWordValue}`
 
     const response = fetch(requestPath).then((response) => {
       response.json().then((results) => {
@@ -53,7 +55,7 @@ function App() {
   const handleResultClick = (matchIndex) => {
     console.log('handleResultClick', matchIndex);
     setCurrentIndex(matchIndex);
-    const requestPath = `http://localhost:3001/reader?idx=${matchIndex}`
+    const requestPath = `${apiBase}/reader?idx=${matchIndex}`
     const response = fetch(requestPath).then((response) => {
       response.json().then((result) => {
         setReadingPanelContent(result.PageText)
