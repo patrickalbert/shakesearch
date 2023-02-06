@@ -53,7 +53,6 @@ function App() {
   }
 
   const handleResultClick = (matchIndex) => {
-    console.log('handleResultClick', matchIndex);
     setCurrentIndex(matchIndex);
     const requestPath = `${apiBase}/reader?idx=${matchIndex}`
     const response = fetch(requestPath).then((response) => {
