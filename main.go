@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 )
 
 func main() {
@@ -29,6 +30,8 @@ func main() {
 
 	http.HandleFunc("/search", handleSearch(searcher))
 
+	http.HandleFunc("/reader", handleReader(searcher))
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3001"
@@ -39,6 +42,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
 type Searcher struct {
@@ -55,6 +62,7 @@ type SearchQuery struct {
 
 func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
 		query, ok := r.URL.Query()["q"]
 		matchCase := r.URL.Query()["match-case"]
 		wholeWord := r.URL.Query()["whole-word"]
@@ -85,6 +93,41 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func handleReader(searcher Searcher) func(w http.ResponseWriter, r *http.Request) {
+	// Handler to return "pages of text based on their index"
+	// Currently it only takes the index and the page switch logic is handled on the client
+	// A more typical pagination solution would be an improvement.
+	return func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
+		idxString, ok := r.URL.Query()["idx"]
+
+		if !ok || len(idxString[0]) < 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("missing index in URL params"))
+			return
+		}
+
+		idx, paramErr := strconv.Atoi(idxString[0])
+		if paramErr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("missing index in URL params"))
+			return
+		}
+
+		page := searcher.getPage(idx)
+		buf := &bytes.Buffer{}
+		enc := json.NewEncoder(buf)
+		err := enc.Encode(page)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("encoding failure"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(buf.Bytes())
+	}
+}
+
 func (s *Searcher) Load(filename string) error {
 	dat, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -101,7 +144,7 @@ type WorkTitleResult struct {
 }
 
 func (s *Searcher) LoadWorkTitleIndexes() error {
-
+	// Creates a structure wich maps work titles to their starting location in the complete works
 	// Since this is from the table of contents, we can safely assume that the titles indexs will be in descending sorted order
 	workTitles := []string{
 		"THE SONNETS",
@@ -155,9 +198,12 @@ func (s *Searcher) LoadWorkTitleIndexes() error {
 
 	for _, title := range workTitles {
 		patternString := title
-		// TODO: a smarter regex here would improve accuracy, but I got stuck with new line matching
+		// TODO: a smarter regex here would improve accuracy
 		pattern := regexp.MustCompile(patternString)
 		idxs := s.SuffixArray.FindAllIndex(pattern, -1)
+
+		// Assumption: the second match of the exact title name is the beginning of the work
+		// (the first match being the table of contents entry)
 		if len(idxs) > 1 {
 			workTitleResult.WorkTitle = title
 			workTitleResult.WorkTitleIndex = idxs[1][0]
@@ -176,6 +222,7 @@ func (s *Searcher) LoadWorkTitleIndexes() error {
 type SearchResult struct {
 	Result        string
 	LocationTitle string
+	Index         int
 }
 
 func (s *Searcher) Search(query SearchQuery) []SearchResult {
@@ -203,10 +250,47 @@ func (s *Searcher) Search(query SearchQuery) []SearchResult {
 			}
 		}
 
-		result.Result = s.CompleteWorks[idx-250 : idx+250]
+		start := idx - 250
+		end := idx + 250
+		if start < 0 {
+			start = 0
+		}
+		if end > len(s.CompleteWorks) {
+			end = len(s.CompleteWorks)
+		}
+
+		result.Index = idx
+		result.Result = s.CompleteWorks[start:end]
 		resultList = append(resultList, result)
 	}
 	return resultList
+}
+
+type PageResult struct {
+	Idx      int
+	PageText string
+}
+
+// Get's a larger chunk of text (a "page") around the search result
+func (s *Searcher) getPage(idx int) PageResult {
+	// Set initial page chunks
+	start := idx - 2000
+	end := idx + 2000
+
+	// Handle oob cases on page increment / decrement
+	if start < 0 {
+		start = 0
+	}
+
+	if end > len(s.CompleteWorks) {
+		end = len(s.CompleteWorks)
+	}
+
+	result := PageResult{
+		Idx:      idx,
+		PageText: s.CompleteWorks[start:end],
+	}
+	return result
 }
 
 func genRegexPattern(query SearchQuery) string {
