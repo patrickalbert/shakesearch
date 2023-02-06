@@ -30,28 +30,29 @@ We will be primarily evaluating based on how well the search works for users. A 
 3. In your submission, share with us what changes you made and how you would prioritize changes if you had more time.
 
 ## Improvements
+My idea for the target user of this system is someone who is researching Shakespeare content (possibly in an academic context). The user may be looking for specific passages or patterns across works.
 
-**Simple react frontent** - keeping things as simple as possible, but leveraging react deal with frontend interactions
+**Simple react frontend** - keeping things as simple as possible but leveraging react to deal with frontend interactions
 
 **Highlight matches** - make the matching query more visible in the results
 
-**Number matches** - show the user the total number of results the query generated. Number each result to allow for easier differentitation
+**Number matches** - show the user the total number of results the query generated. Number each result to allow for easier differentiation
 
 **Show containing work** - shows the specific work from which the match was retrieved
 
 **Case sensitivity** - added the option for case sensitive or insensitive search
 
-**Whole word match** - added the option to match whole word rather than partial
+**Whole word match** - added the option to match whole words rather than partial
 
 **Multiple words** - multiple words can be matched
 
 **Reading Panel** - the ability for the user to click on a query match and see a larger context around that match. Includes the ability to move forward and backward in the text starting from the match location
 
-If I spent more time I would prioritize the following (in order):
+If I spent more time, I would prioritize the following (in order):
 
 1.) Give the user the ability to select a specific work to search within
-2.) handle misspellings - in the case that there was no match found the system could suggest potential options for similar items found in the text
-3.) scroll automatically in reader to match
-4.) wouldn't page break on words
+2.) Handle misspellings - in the case that there was no match found, the system could suggest potential options for similar items found in the text
+3.) In the reader, scroll automatically to match
+4.) Stop content breaks in the middle of words
 
-Functionalties #1 and #2 would improve the user's ability to quicky find what he or she is looking for, while #3 and #4 are visual / usability improvements
+Functionalities #1 and #2 would improve the user's ability to quickly find what he or she is looking for, while #3 and #4 are visual / usability improvements
